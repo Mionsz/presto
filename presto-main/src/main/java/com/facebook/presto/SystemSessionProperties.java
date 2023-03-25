@@ -34,6 +34,7 @@ import com.facebook.presto.sql.analyzer.FeaturesConfig.JoinReorderingStrategy;
 import com.facebook.presto.sql.analyzer.FeaturesConfig.PartialAggregationStrategy;
 import com.facebook.presto.sql.analyzer.FeaturesConfig.PartialMergePushdownStrategy;
 import com.facebook.presto.sql.analyzer.FeaturesConfig.PartitioningPrecisionStrategy;
+import com.facebook.presto.sql.analyzer.FeaturesConfig.RandomizeOuterJoinNullKeyStrategy;
 import com.facebook.presto.sql.analyzer.FeaturesConfig.SingleStreamSpillerChoice;
 import com.facebook.presto.sql.planner.CompilerConfig;
 import com.facebook.presto.tracing.TracingConfig;
@@ -202,7 +203,6 @@ public final class SystemSessionProperties
     public static final String DYNAMIC_FILTERING_MAX_PER_DRIVER_SIZE = "dynamic_filtering_max_per_driver_size";
     public static final String DYNAMIC_FILTERING_RANGE_ROW_LIMIT_PER_DRIVER = "dynamic_filtering_range_row_limit_per_driver";
     public static final String FRAGMENT_RESULT_CACHING_ENABLED = "fragment_result_caching_enabled";
-    public static final String LEGACY_TYPE_COERCION_WARNING_ENABLED = "legacy_type_coercion_warning_enabled";
     public static final String INLINE_SQL_FUNCTIONS = "inline_sql_functions";
     public static final String REMOTE_FUNCTIONS_ENABLED = "remote_functions_enabled";
     public static final String CHECK_ACCESS_CONTROL_ON_UTILIZED_COLUMNS_ONLY = "check_access_control_on_utilized_columns_only";
@@ -245,6 +245,7 @@ public final class SystemSessionProperties
     public static final String PUSH_REMOTE_EXCHANGE_THROUGH_GROUP_ID = "push_remote_exchange_through_group_id";
     public static final String OPTIMIZE_MULTIPLE_APPROX_PERCENTILE_ON_SAME_FIELD = "optimize_multiple_approx_percentile_on_same_field";
     public static final String RANDOMIZE_OUTER_JOIN_NULL_KEY = "randomize_outer_join_null_key";
+    public static final String RANDOMIZE_OUTER_JOIN_NULL_KEY_STRATEGY = "randomize_outer_join_null_key_strategy";
     public static final String IN_PREDICATES_AS_INNER_JOINS_ENABLED = "in_predicates_as_inner_joins_enabled";
     public static final String PUSH_AGGREGATION_BELOW_JOIN_BYTE_REDUCTION_THRESHOLD = "push_aggregation_below_join_byte_reduction_threshold";
     public static final String KEY_BASED_SAMPLING_ENABLED = "key_based_sampling_enabled";
@@ -1130,11 +1131,6 @@ public final class SystemSessionProperties
                         featuresConfig.isFragmentResultCachingEnabled(),
                         false),
                 booleanProperty(
-                        LEGACY_TYPE_COERCION_WARNING_ENABLED,
-                        "Enable warning for query relying on legacy type coercion",
-                        featuresConfig.isLegacyDateTimestampToVarcharCoercion(),
-                        true),
-                booleanProperty(
                         SKIP_REDUNDANT_SORT,
                         "Skip redundant sort operations",
                         featuresConfig.isSkipRedundantSort(),
@@ -1427,9 +1423,21 @@ public final class SystemSessionProperties
                         false),
                 booleanProperty(
                         RANDOMIZE_OUTER_JOIN_NULL_KEY,
-                        "Randomize null join key for outer join",
-                        featuresConfig.isRandomizeOuterJoinNullKeyEnabled(),
+                        "(Deprecated) Randomize null join key for outer join",
+                        false,
                         false),
+                new PropertyMetadata<>(
+                        RANDOMIZE_OUTER_JOIN_NULL_KEY_STRATEGY,
+                        format("When to apply randomization to join keys in outer joins to mitigate null skew",
+                                Stream.of(RandomizeOuterJoinNullKeyStrategy.values())
+                                        .map(RandomizeOuterJoinNullKeyStrategy::name)
+                                        .collect(joining(","))),
+                        VARCHAR,
+                        RandomizeOuterJoinNullKeyStrategy.class,
+                        featuresConfig.getRandomizeOuterJoinNullKeyStrategy(),
+                        false,
+                        value -> RandomizeOuterJoinNullKeyStrategy.valueOf(((String) value).toUpperCase()),
+                        RandomizeOuterJoinNullKeyStrategy::name),
                 booleanProperty(
                         OPTIMIZE_CONDITIONAL_AGGREGATION_ENABLED,
                         "Enable rewriting IF(condition, AGG(x)) to AGG(x) with condition included in mask",
@@ -2225,11 +2233,6 @@ public final class SystemSessionProperties
         return session.getSystemProperty(FRAGMENT_RESULT_CACHING_ENABLED, Boolean.class);
     }
 
-    public static boolean isLegacyTypeCoercionWarningEnabled(Session session)
-    {
-        return session.getSystemProperty(LEGACY_TYPE_COERCION_WARNING_ENABLED, Boolean.class);
-    }
-
     public static boolean isInlineSqlFunctions(Session session)
     {
         return session.getSystemProperty(INLINE_SQL_FUNCTIONS, Boolean.class);
@@ -2430,9 +2433,13 @@ public final class SystemSessionProperties
         return session.getSystemProperty(NATIVE_EXECUTION_EXECUTABLE_PATH, String.class);
     }
 
-    public static boolean randomizeOuterJoinNullKeyEnabled(Session session)
+    public static RandomizeOuterJoinNullKeyStrategy getRandomizeOuterJoinNullKeyStrategy(Session session)
     {
-        return session.getSystemProperty(RANDOMIZE_OUTER_JOIN_NULL_KEY, Boolean.class);
+        // If RANDOMIZE_OUTER_JOIN_NULL_KEY is set to true, return always enabled, otherwise get strategy from RANDOMIZE_OUTER_JOIN_NULL_KEY_STRATEGY
+        if (session.getSystemProperty(RANDOMIZE_OUTER_JOIN_NULL_KEY, Boolean.class)) {
+            return RandomizeOuterJoinNullKeyStrategy.ALWAYS;
+        }
+        return session.getSystemProperty(RANDOMIZE_OUTER_JOIN_NULL_KEY_STRATEGY, RandomizeOuterJoinNullKeyStrategy.class);
     }
 
     public static boolean isOptimizeConditionalAggregationEnabled(Session session)

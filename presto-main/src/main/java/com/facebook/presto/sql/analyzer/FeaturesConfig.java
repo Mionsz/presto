@@ -112,7 +112,6 @@ public class FeaturesConfig
     private boolean legacyMapSubscript;
     private boolean legacyRowFieldOrdinalAccess;
     private boolean legacyCharToVarcharCoercion;
-    private boolean legacyDateTimestampToVarcharCoercion;
     private boolean optimizeMixedDistinctAggregations;
     private boolean forceSingleNodeOutput = true;
     private boolean pagesIndexEagerCompactionEnabled;
@@ -242,6 +241,7 @@ public class FeaturesConfig
     private boolean nativeExecutionEnabled;
     private String nativeExecutionExecutablePath = "./presto_server";
     private boolean randomizeOuterJoinNullKey;
+    private RandomizeOuterJoinNullKeyStrategy randomizeOuterJoinNullKeyStrategy = RandomizeOuterJoinNullKeyStrategy.DISABLED;
     private boolean isOptimizeConditionalAggregationEnabled;
     private boolean isRemoveRedundantDistinctAggregationEnabled = true;
     private boolean inPredicatesAsInnerJoinsEnabled;
@@ -332,6 +332,13 @@ public class FeaturesConfig
         UNWRAP_IF // Rewrites AGG(IF(condition, expr)) to AGG(expr) FILTER (WHERE condition).
     }
 
+    public enum RandomizeOuterJoinNullKeyStrategy
+    {
+        DISABLED,
+        KEY_FROM_OUTER_JOIN, // Enabled only when join keys are from output of outer joins
+        ALWAYS
+    }
+
     public double getCpuCostWeight()
     {
         return cpuCostWeight;
@@ -402,18 +409,6 @@ public class FeaturesConfig
     public boolean isLegacyCharToVarcharCoercion()
     {
         return legacyCharToVarcharCoercion;
-    }
-
-    @Config("deprecated.legacy-date-timestamp-to-varchar-coercion")
-    public FeaturesConfig setLegacyDateTimestampToVarcharCoercion(boolean legacyDateTimestampToVarcharCoercion)
-    {
-        this.legacyDateTimestampToVarcharCoercion = legacyDateTimestampToVarcharCoercion;
-        return this;
-    }
-
-    public boolean isLegacyDateTimestampToVarcharCoercion()
-    {
-        return legacyDateTimestampToVarcharCoercion;
     }
 
     @Config("deprecated.legacy-array-agg")
@@ -2295,6 +2290,19 @@ public class FeaturesConfig
     public FeaturesConfig setRandomizeOuterJoinNullKeyEnabled(boolean randomizeOuterJoinNullKey)
     {
         this.randomizeOuterJoinNullKey = randomizeOuterJoinNullKey;
+        return this;
+    }
+
+    public RandomizeOuterJoinNullKeyStrategy getRandomizeOuterJoinNullKeyStrategy()
+    {
+        return randomizeOuterJoinNullKeyStrategy;
+    }
+
+    @Config("optimizer.randomize-outer-join-null-key-strategy")
+    @ConfigDescription("When to apply randomization to null keys in outer join")
+    public FeaturesConfig setRandomizeOuterJoinNullKeyStrategy(RandomizeOuterJoinNullKeyStrategy randomizeOuterJoinNullKeyStrategy)
+    {
+        this.randomizeOuterJoinNullKeyStrategy = randomizeOuterJoinNullKeyStrategy;
         return this;
     }
 

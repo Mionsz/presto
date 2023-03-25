@@ -90,6 +90,16 @@ connector::hive::HiveColumnHandle::ColumnType toHiveColumnType(
   }
 }
 
+std::vector<common::Subfield> toRequiredSubfields(
+    const protocol::List<protocol::Subfield>& subfields) {
+  std::vector<common::Subfield> result;
+  result.reserve(subfields.size());
+  for (auto& subfield : subfields) {
+    result.emplace_back(subfield);
+  }
+  return result;
+}
+
 std::shared_ptr<connector::ColumnHandle> toColumnHandle(
     const protocol::ColumnHandle* column) {
   if (auto hiveColumn =
@@ -97,7 +107,8 @@ std::shared_ptr<connector::ColumnHandle> toColumnHandle(
     return std::make_shared<connector::hive::HiveColumnHandle>(
         hiveColumn->name,
         toHiveColumnType(hiveColumn->columnType),
-        stringToType(hiveColumn->typeSignature));
+        stringToType(hiveColumn->typeSignature),
+        toRequiredSubfields(hiveColumn->requiredSubfields));
   }
 
   if (auto tpchColumn =
@@ -2223,17 +2234,13 @@ velox::core::PlanFragment VeloxBatchQueryPlanConverter::toVeloxQueryPlan(
       partitionedOutputNode->sources().back(),
       partitionedOutputNode->partitionFunctionFactory());
 
-  auto localPartitionNode = std::make_shared<core::LocalPartitionNode>(
-      "shuffle-gather",
-      core::LocalPartitionNode::Type::kGather,
-      nullptr,
-      std::vector<core::PlanNodePtr>{partitionAndSerializeNode});
-
   auto shuffleWriteNode = std::make_shared<operators::ShuffleWriteNode>(
       "root",
       shuffleName_,
       std::move(*serializedShuffleWriteInfo_),
-      std::move(localPartitionNode));
+      core::LocalPartitionNode::gather(
+          "shuffle-gather",
+          std::vector<core::PlanNodePtr>{partitionAndSerializeNode}));
 
   // For presto_cpp, the last node must be the PartitionedOutputNode in order to
   // get the output (e.g actual data or metadata) and send back to coordinator.
