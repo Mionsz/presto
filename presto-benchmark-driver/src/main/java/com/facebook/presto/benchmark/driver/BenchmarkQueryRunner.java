@@ -267,13 +267,10 @@ public class BenchmarkQueryRunner
             URI addressUri = uriBuilderFrom(server).replacePath("/v1/jmx/mbean/java.lang:type=OperatingSystem/ProcessCpuTime").build();
             String data = httpClient.execute(prepareGet().setUri(addressUri).build(), createStringResponseHandler()).getBody();
             if (!data.trim().isEmpty()) {
-                totalCpuTime += TimeUnit.NANOSECONDS.toNanos(parseLong(data.trim()));
-            }
-            else {
-                totalCpuTime += System.nanoTime();
+                totalCpuTime += parseLong(data.trim());
             }
         }
-        return totalCpuTime;
+        return TimeUnit.NANOSECONDS.toNanos(totalCpuTime);
     }
 
     private List<URI> getAllNodes(URI server)
