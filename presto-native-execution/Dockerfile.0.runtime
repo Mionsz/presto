@@ -31,12 +31,12 @@ ADD --chown=186:186 --chmod=0755 scripts/release-centos-dockerfile/etc/ /opt/pre
 ADD --chown=186:186 --chmod=0755 scripts/release-centos-dockerfile/opt/ /opt/
 
 RUN set -exu && \
-    dnf -y install uuid hostname vim && \
+    dnf -y install iproute procps lsof sysstat uuid hostname vim tar wget which && \
+    mkdir -p /opt/presto/etc/catalog /var/lib/presto/data && \
     useradd -r -U --uid=186 -d /opt presto && \
     chgrp 186 /etc/passwd && \
-    chown -R 186 /opt && \
-    chmod -R ug+rw /etc/passwd /opt && \
+    chown -R 186 /opt /var/lib/presto && \
+    chmod -R ug+rw /etc/passwd /opt /var/lib/presto && \
     chmod ug+x /opt/*.sh && \
     rm -rf /root/.cache /tmp && \
     dnf clean all
-
