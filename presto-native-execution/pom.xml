@@ -63,7 +63,6 @@
         <dependency>
             <groupId>com.facebook.presto</groupId>
             <artifactId>presto-hive</artifactId>
-            <scope>runtime</scope>
             <exclusions>
                 <exclusion>
                     <groupId>org.xerial.snappy</groupId>
@@ -74,34 +73,6 @@
                     <artifactId>RoaringBitmap</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
-
-        <dependency>
-            <groupId>com.facebook.presto</groupId>
-            <artifactId>presto-hive</artifactId>
-            <type>test-jar</type>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.xerial.snappy</groupId>
-                    <artifactId>snappy-java</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.roaringbitmap</groupId>
-                    <artifactId>RoaringBitmap</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <dependency>
-            <groupId>com.facebook.presto</groupId>
-            <artifactId>presto-spark-classloader-interface</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.facebook.presto</groupId>
-            <artifactId>presto-spark-base</artifactId>
-            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -112,9 +83,12 @@
 
         <dependency>
             <groupId>com.facebook.presto</groupId>
+            <artifactId>presto-spark-classloader-interface</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.facebook.presto</groupId>
             <artifactId>presto-spark-base</artifactId>
-            <type>test-jar</type>
-            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -132,6 +106,15 @@
         <plugins>
             <!-- Disable git-commit-id-plugin plugin to allow for running tests without
             a git checkout -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <include>${project.parent.basedir}/presto-hive/src/test/java/com/facebook/presto/hive/**.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>pl.project13.maven</groupId>
                 <artifactId>git-commit-id-plugin</artifactId>
